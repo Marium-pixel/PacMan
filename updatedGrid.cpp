@@ -341,7 +341,7 @@ public:
         while (curr) {
             int cx = curr->x * tileSize + tileSize / 2;
             int cy = curr->y * tileSize + tileSize / 2;
-            DrawCircle(cx, cy, tileSize * 0.1f, YELLOW);
+            DrawCircle(cx, cy, tileSize * 0.15f, ORANGE);
             curr = curr->next;
         }
     }
@@ -451,11 +451,32 @@ public:
                 if (layout[y][x] == 'O') {
                     int cx = x * tileSize + tileSize / 2;
                     int cy = y * tileSize + tileSize / 2;
-                    DrawCircle(cx, cy, tileSize * 0.25f, YELLOW);
+                    DrawCircle(cx, cy, tileSize * 0.25f, ORANGE);
                 }
             }
         }
-    }
+
+       /* for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                if (layout[y][x] == '-') {
+                    int cx = x * tileSize + tileSize / 2;
+                    int cy = y * tileSize + tileSize / 2;
+                    DrawLine(cx, cy, tileSize * 0.5f,);
+                }
+            }
+        }*/
+        // Example ghost house cap
+        int gateX = 9 * tileSize;   // x position in grid
+        int gateY = 9 * tileSize;   // y position in grid
+        int gateWidth = tileSize * 2;  // width across 2 tiles
+
+        DrawLineEx({ (float)gateX, (float)gateY },
+            { (float)(gateX + gateWidth), (float)gateY },
+            3.5f,  // thickness
+            SKYBLUE);
+
+
+    }   
 
     bool isWall(int gx, int gy) {
         if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true;
@@ -519,7 +540,7 @@ int main() {
         "######.##### ## #####.######",
         "######.##### ## #####.######",
         "######.##          ##.######",
-        "######... ###  ### ...######",
+        "######... ##----## ...######",
         " ........ #      # .........",
         "######.## #      # ##.######",
         "######.## ######## ##.######",
@@ -539,9 +560,9 @@ int main() {
         "############################"*/
 
 " ################### ",
-        " #........#........# ",
+        " #........#.....O..# ",
         " # ##.###.#.###.## # ",
-        " #.................# ",
+        " #..O..............# ",
         " #.##.#.#####.#.##.# ",
         " #....#...#...#....# ",
         " ####.### # ###.#### ",
@@ -549,15 +570,15 @@ int main() {
         "#####.# ## ## #.#####",
         "     .  #   #  .     ",
         "#####.# ##### #.#####",
-        "    #.#       #.#    ",
+        "    #.#...O...#.#    ",
         " ####.# ##### #.#### ",
         " #........#........# ",
         " #.##.###.#.###.##.# ",
-        " # .#...........#. # ",
-        " ##.#.#.#####.#.#.## ",
+        " # .#.O.........#. # ",
+        " ##.#.#.#####.P.#.## ",
         " #....#...#...#....# ",
         " #.######.#.######.# ",
-        " #.................# ",
+        " #...............O.# ",
         " ################### "
     };
 
