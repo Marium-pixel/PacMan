@@ -4,7 +4,14 @@
 #include <unordered_map>
 #include <string>
 #include <algorithm>
+#include <array>
+#include <string>
+#include <cmath>
 using namespace std;
+
+constexpr unsigned char CELL_SIZE = 16;
+constexpr unsigned char MAP_HEIGHT = 21;
+constexpr unsigned char MAP_WIDTH = 21;
 
 // -------------------- Linked List for Pellets --------------------
 struct CoinNode {
@@ -163,8 +170,27 @@ public:
     }
 };
 
+enum Cell
+{
+    Door,
+    Empty,
+    Energizer,
+    Pellet,
+    Wall
+};
+
+
+
 // -------------------- Pacman Class --------------------
 class Pacman {
+    bool animation_over;
+    bool dead;
+
+    unsigned char direction;  // 0=left, 1=right, 2=up, 3=down
+
+    unsigned short animation_timer;
+    unsigned short energizer_timer;
+
 public:
     float x, y;
     int tileSize;
@@ -172,9 +198,11 @@ public:
     float radius;
 
     Pacman(int startX, int startY, int tSize)
-        : x((float)startX), y((float)startY),
-        tileSize(tSize), speed(2.5f) {
-        radius = tileSize * 0.30f;
+        : x((float)startX), y((float)startY), tileSize(tSize),
+        speed(2.5f), animation_over(false), dead(false),
+        direction(1), animation_timer(0), energizer_timer(0)
+    {
+        radius = tileSize * 0.4f;
     }
 
     static bool circleIntersectsRect(float cx, float cy, float r,
@@ -204,8 +232,10 @@ public:
             }
         return false;
     }
+
+    // ---------------- Update ----------------
     void update(Map& map) {
-        // Snap to center of current grid cell for perfect path alignment
+        // Snap to center of current grid cell for smooth alignment
         int gridX = (int)((x + tileSize / 2) / tileSize);
         int gridY = (int)((y + tileSize / 2) / tileSize);
         float centerX = gridX * tileSize + tileSize / 2.0f;
@@ -214,42 +244,81 @@ public:
         if (fabs(x - centerX) < 1.5f) x = centerX;
         if (fabs(y - centerY) < 1.5f) y = centerY;
 
-        // Original input and movement logic
+        // Handle input
         float dx = 0, dy = 0;
-        if (IsKeyDown(KEY_RIGHT)) dx += speed;
-        if (IsKeyDown(KEY_LEFT))  dx -= speed;
-        if (IsKeyDown(KEY_UP))    dy -= speed;
-        if (IsKeyDown(KEY_DOWN))  dy += speed;
+        if (IsKeyDown(KEY_RIGHT)) { dx += speed; direction = 1; }
+        if (IsKeyDown(KEY_LEFT)) { dx -= speed; direction = 0; }
+        if (IsKeyDown(KEY_UP)) { dy -= speed; direction = 3; }
+        if (IsKeyDown(KEY_DOWN)) { dy += speed; direction = 2; }
 
+        // Normalize diagonal movement
         if (dx != 0 && dy != 0) {
             float inv = 1.0f / sqrtf(dx * dx + dy * dy);
             dx *= inv * speed;
             dy *= inv * speed;
         }
 
+        // Check collisions before moving
         float tryX = x + dx;
         float tryY = y + dy;
         if (!collidesAtCenter(map, tryX + tileSize * 0.5f, y + tileSize * 0.5f)) x = tryX;
         if (!collidesAtCenter(map, x + tileSize * 0.5f, tryY + tileSize * 0.5f)) y = tryY;
 
+        // Eat pellets
         int eatGX = (int)((x + tileSize * 0.5f) / tileSize);
         int eatGY = (int)((y + tileSize * 0.5f) / tileSize);
-        map.coins.eatCoinAt(eatGX, eatGY);
-        map.eatLargePelletAt(eatGX, eatGY);
+        map.coins.eatCoinAt(eatGX, eatGY); // small pellet
+        map.eatLargePelletAt(eatGX, eatGY); // big pellet
+
+        // Update energizer timer
+        if (energizer_timer > 0) energizer_timer--;
+
+        animation_timer++;
+    }
+
+    // Accessors
+    bool get_animation_over() { return animation_over; }
+    bool get_dead() { return dead; }
+    unsigned char get_direction() { return direction; }
+    unsigned short get_energizer_timer() { return energizer_timer; }
+
+    // Mutators
+    void set_dead(bool i_dead) { dead = i_dead; }
+    void set_animation_timer(unsigned short i_animation_timer) { animation_timer = i_animation_timer; }
+    void set_position(short i_x, short i_y) { x = i_x; y = i_y; }
+
+    // Reset Pacman state
+    void reset() {
+        animation_over = false;
+        dead = false;
+        animation_timer = 0;
+        energizer_timer = 0;
+        direction = 1;
+    }
+
+    
+    // Draw Pacman
+    void draw(bool victory = false) {
+        float cx = x + tileSize / 2;
+        float cy = y + tileSize / 2;
+
+        Color pacColor = victory ? GOLD : YELLOW;
+        DrawCircle((int)cx, (int)cy, radius, pacColor);
+
+        // Simple mouth animation
+        float mouthAngle = 40 * sin(animation_timer * 0.15f);
+        switch (direction) {
+        case 0: DrawCircleSector({ cx, cy }, radius, 180 + mouthAngle, 180 - mouthAngle, 0, BLACK); break;
+        case 1: DrawCircleSector({ cx, cy }, radius, mouthAngle, -mouthAngle, 0, BLACK); break;
+        case 2: DrawCircleSector({ cx, cy }, radius, 90 + mouthAngle, 90 - mouthAngle, 0, BLACK); break;
+        case 3: DrawCircleSector({ cx, cy }, radius, 270 + mouthAngle, 270 - mouthAngle, 0, BLACK); break;
+        }
     }
 
 
-    void draw() {
-        float cx = x + tileSize * 0.5f;
-        float cy = y + tileSize * 0.5f;
-        DrawCircle((int)cx, (int)cy, radius, YELLOW);
-    }
 };
 
-// -------------------- Wrapper Function (Option 1 style) --------------------
-void updatePacman(Pacman& pac, Map& maze) {
-    pac.update(maze);
-}
+
 
 // -------------------- Main --------------------
 int main() {
@@ -277,6 +346,20 @@ int main() {
  " ################### "
     };
 
+    array<array<Cell, MAP_HEIGHT>, MAP_WIDTH> dummyMap;
+
+    for (int y = 0; y < MAP_HEIGHT; y++) {
+        for (int x = 0; x < MAP_WIDTH; x++) {
+            char c = mazeLayout[y][x];
+            if (c == '#') dummyMap[x][y] = Cell::Wall;
+            else if (c == 'O') dummyMap[x][y] = Cell::Energizer;
+            else if (c == '.') dummyMap[x][y] = Cell::Pellet;
+            else dummyMap[x][y] = Cell::Empty;
+        }
+    }
+
+
+
     int tileSize = 30;
     Map maze(mazeLayout, tileSize);
 
@@ -297,7 +380,8 @@ int main() {
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
-        updatePacman(pac, maze);
+        // Move Pacman based on arrow keys
+        pac.update(maze); // We'll create dummyMap below
 
         BeginDrawing();
         ClearBackground(BLACK);
@@ -306,6 +390,7 @@ int main() {
         DrawText("PACMAZE DEMO", 8, 6, 16, WHITE);
         EndDrawing();
     }
+
 
     CloseWindow();
     return 0;
