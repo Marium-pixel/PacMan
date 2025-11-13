@@ -148,7 +148,7 @@ public:
 
         // Draw Ghost gate
         int gateX = 10 * tileSize;
-        int gateY = 9 * tileSize;
+        int gateY = 8 * tileSize;
         int gateWidth = tileSize * 1;
         DrawLineEx({ (float)gateX,(float)gateY },
             { (float)(gateX + gateWidth),(float)gateY }, 3.5f, SKYBLUE);
@@ -270,6 +270,7 @@ public:
     }
 };
 
+enum GhostState{ NORMAL, FRIGHTENED, EYES};
 // -------------------- Ghost --------------------
 class Ghost {
 public:
@@ -288,6 +289,66 @@ public:
     }
 
     void draw(bool i_flash, int tileSize) {
+        // Equivalent to the SFML body_frame calculation
+        int body_frame = (animation_timer / GHOST_ANIMATION_SPEED) % GHOST_ANIMATION_FRAMES;
+
+        // Source rectangles assume a sprite sheet arranged like:
+        // row 0 = body animation frames (cols 0..GHOST_ANIMATION_FRAMES-1)
+        // row 1 = faces (direction frames at cols 0..3, frightened-face at col 4)
+        // row 2 = eyes (direction frames at cols 0..3)
+        const int SPRITE_SIZE = 16; // same as CELL_SIZE in your SFML source
+        Rectangle srcBody = { body_frame * SPRITE_SIZE, 0.0f, (float)SPRITE_SIZE, (float)SPRITE_SIZE };
+        Rectangle srcFace; // will be set per state
+        Rectangle dstRect = { position.x, position.y, (float)tileSize, (float)tileSize };
+        Vector2 origin = { 0.0f, 0.0f };
+
+        // Default body tint (will be overwritten for frightened/flash)
+        Color bodyColor = WHITE;
+        switch (id) {
+        case 0: bodyColor = RED; break;
+        case 1: bodyColor = Color{ 255,182,255,255 }; break; // pink-ish
+        case 2: bodyColor = Color{ 0,255,255,255 }; break;   // cyan
+        case 3: bodyColor = Color{ 255,182,85,255 }; break;  // orange-like (if you later add a 4th ghost)
+        }
+
+        // Handle states
+        if (frightened_mode == 0) {
+            // Normal: draw body + face (face depends on direction)
+            srcFace = { (float)(CELL_SIZE * direction), (float)CELL_SIZE, (float)CELL_SIZE, (float)CELL_SIZE };
+            // Draw body and face
+            DrawTexturePro(texture, srcBody, dstRect, origin, 0.0f, bodyColor);
+            DrawTexturePro(texture, srcFace, dstRect, origin, 0.0f, WHITE);
+        }
+        else if (frightened_mode == 1) {
+            // Frightened: blue body, face uses frightened tile (col 4, row 1)
+            Color frightenedBlue = Color{ 36,36,255,255 };
+            Color faceColor = WHITE;
+            srcFace = { (float)(4 * CELL_SIZE), (float)CELL_SIZE, (float)CELL_SIZE, (float)CELL_SIZE };
+
+            // Flashing logic: if i_flash and alternate frame, invert colors like SFML code
+            if (i_flash && (body_frame % 2) == 0) {
+                bodyColor = WHITE;
+                faceColor = Color{ 255, 0, 0, 255 }; // red face when flashing
+            }
+            else {
+                bodyColor = frightenedBlue;
+                faceColor = WHITE;
+            }
+
+            DrawTexturePro(texture, srcBody, dstRect, origin, 0.0f, bodyColor);
+            DrawTexturePro(texture, srcFace, dstRect, origin, 0.0f, faceColor);
+        }
+        else {
+            // EYES (ghost has been eaten) -> only draw eyes (row 2, direction column)
+            srcFace = { (float)(CELL_SIZE * direction), (float)(2 * CELL_SIZE), (float)CELL_SIZE, (float)CELL_SIZE };
+            DrawTexturePro(texture, srcFace, dstRect, origin, 0.0f, WHITE);
+        }
+
+        // Advance animation timer (wrap to avoid overflow)
+        animation_timer = (animation_timer + 1) % (GHOST_ANIMATION_FRAMES * GHOST_ANIMATION_SPEED);
+    }
+
+    /*void draw(bool i_flash, int tileSize) {
         int frame = (animation_timer / GHOST_ANIMATION_SPEED) % GHOST_ANIMATION_FRAMES;
         Rectangle srcRectBody = { frame * 16.0f, 0, 16, 16 };
         Rectangle dstRect = { position.x, position.y, (float)tileSize, (float)tileSize };
@@ -297,12 +358,11 @@ public:
         case 0: bodyColor = RED; break;
         case 1: bodyColor = PINK; break;
         case 2: bodyColor = SKYBLUE; break;
-        case 3: bodyColor = ORANGE; break;
         }
 
         DrawTexturePro(texture, srcRectBody, dstRect, { 0, 0 }, 0.0f, bodyColor);
         animation_timer = (animation_timer + 1) % (GHOST_ANIMATION_FRAMES * GHOST_ANIMATION_SPEED);
-    }
+    }*/
 
 };
 
@@ -311,7 +371,7 @@ int main() {
     vector<string> mazeLayout = {
  " ################### ",
  " #........#.....O..# ",
- " # ##.###.#.###.## # ",
+ " #.##.###.#.###.##.# ",
  " #..O..............# ",
  " #.##.#.#####.#.##.# ",
  " #....#...#...#....# ",
@@ -321,10 +381,10 @@ int main() {
  "     .  #   #  .     ",
  "#####.# ##### #.#####",
  "    #.#...O...#.#    ",
- " ####.# ##### #.#### ",
+ " ####.#.#####.#.#### ",
  " #........#........# ",
  " #.##.###.#.###.##.# ",
- " # .#.O.........#. # ",
+ " #..#.O.........#..# ",
  " ##.#.#.#####.P.#.## ",
  " #....#...#...#....# ",
  " #.######.#.######.# ",
@@ -353,7 +413,7 @@ int main() {
 
     Texture2D ghostTexture = LoadTexture("Ghost16.png");
     if (ghostTexture.id == 0)
-        cout << "⚠️ Ghost texture not found! Check path.\n";
+        cout << "?? Ghost texture not found! Check path.\n";
 
     vector<Ghost> ghosts;
     ghosts.push_back(Ghost(9, 9, 0, ghostTexture, tileSize));
