@@ -1,0 +1,382 @@
+#include "raylib.h"
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <string>
+#include <algorithm>
+#include <array>
+#include <cmath>
+using namespace std;
+
+constexpr unsigned char CELL_SIZE = 16;
+constexpr unsigned char MAP_HEIGHT = 21;
+constexpr unsigned char MAP_WIDTH = 21;
+
+constexpr unsigned char GHOST_ANIMATION_FRAMES = 2;
+constexpr unsigned char GHOST_ANIMATION_SPEED = 8;
+
+// -------------------- Linked List for Pellets --------------------
+struct CoinNode {
+    int x, y;
+    CoinNode* next;
+};
+
+class CoinList {
+public:
+    CoinNode* head = nullptr;
+
+    void addCoin(int x, int y) {
+        CoinNode* newCoin = new CoinNode{ x, y, head };
+        head = newCoin;
+    }
+
+    void drawCoins(int tileSize) {
+        CoinNode* curr = head;
+        while (curr) {
+            int cx = curr->x * tileSize + tileSize / 2;
+            int cy = curr->y * tileSize + tileSize / 2;
+            DrawCircle(cx, cy, tileSize * 0.12f, ORANGE);
+            curr = curr->next;
+        }
+    }
+
+    void eatCoinAt(int gridX, int gridY) {
+        CoinNode* curr = head;
+        CoinNode* prev = nullptr;
+        while (curr) {
+            if (curr->x == gridX && curr->y == gridY) {
+                if (prev) prev->next = curr->next;
+                else head = curr->next;
+                delete curr;
+                return;
+            }
+            prev = curr;
+            curr = curr->next;
+        }
+    }
+};
+
+// -------------------- Map Class --------------------
+class Map {
+public:
+    vector<string> layout;
+    int rows, cols, tileSize;
+    CoinList coins;
+
+    Map(vector<string> mapLayout, int tSize)
+        : layout(mapLayout), tileSize(tSize)
+    {
+        rows = layout.size();
+        cols = layout[0].size();
+
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                if (layout[y][x] == '.') coins.addCoin(x, y);
+            }
+        }
+    }
+
+    void Draw() {
+        int pad = 0;
+
+        // Draw corridors
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                char c = layout[y][x];
+                int px = x * tileSize;
+                int py = y * tileSize;
+                if (c != '#')
+                    DrawRectangle(px, py, tileSize, tileSize, BLACK);
+            }
+        }
+
+        // Draw walls
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                if (layout[y][x] == '#') {
+                    int px = x * tileSize;
+                    int py = y * tileSize;
+                    int w = tileSize;
+                    int h = tileSize;
+                    if (y == 0 || layout[y - 1][x] != '#')
+                        DrawLineEx({ (float)px, (float)py },
+                            { (float)(px + w), (float)py }, 3, DARKBLUE);
+                    if (y == rows - 1 || layout[y + 1][x] != '#')
+                        DrawLineEx({ (float)px, (float)(py + h) },
+                            { (float)(px + w), (float)(py + h) }, 3, DARKBLUE);
+                    if (x == 0 || layout[y][x - 1] != '#')
+                        DrawLineEx({ (float)px, (float)py },
+                            { (float)px, (float)(py + h) }, 3, DARKBLUE);
+                    if (x == cols - 1 || layout[y][x + 1] != '#')
+                        DrawLineEx({ (float)(px + w), (float)py },
+                            { (float)(px + w), (float)(py + h) }, 3, DARKBLUE);
+                }
+            }
+        }
+
+        // Draw Ghost Home box
+        int gxmin = cols, gxmax = -1, gymin = rows, gymax = -1;
+        for (int y = 0; y < rows; y++)
+            for (int x = 0; x < cols; x++)
+                if (layout[y][x] == 'G') {
+                    gxmin = min(gxmin, x);
+                    gxmax = max(gxmax, x);
+                    gymin = min(gymin, y);
+                    gymax = max(gymax, y);
+                }
+
+        if (gxmax >= gxmin && gymax >= gymin) {
+            int left = gxmin * tileSize + pad;
+            int top = gymin * tileSize + pad;
+            int w = (gxmax - gxmin + 1) * tileSize - pad;
+            int h = (gymax - gymin + 1) * tileSize - pad;
+            DrawRectangle(left, top, w, h, Color{ 15,15,15,255 });
+            DrawRectangleLinesEx({ (float)left,(float)top,(float)w,(float)h }, 2, DARKBLUE);
+        }
+
+        // Draw pellets
+        coins.drawCoins(tileSize);
+
+        // Draw large pellets
+        for (int y = 0; y < rows; y++)
+            for (int x = 0; x < cols; x++)
+                if (layout[y][x] == 'O') {
+                    int cx = x * tileSize + tileSize / 2;
+                    int cy = y * tileSize + tileSize / 2;
+                    DrawCircle(cx, cy, tileSize * 0.2f, ORANGE);
+                }
+
+        // Draw Ghost gate
+        int gateX = 10 * tileSize;
+        int gateY = 9 * tileSize;
+        int gateWidth = tileSize * 1;
+        DrawLineEx({ (float)gateX,(float)gateY },
+            { (float)(gateX + gateWidth),(float)gateY }, 3.5f, SKYBLUE);
+    }
+
+    bool isWall(int gx, int gy) {
+        if (gx < 0 || gx >= cols || gy < 0 || gy >= rows) return true;
+        char c = layout[gy][gx];
+        if (c == '#' || (gy == 9 && gx == 10)) return true;
+        return false;
+    }
+
+    void eatLargePelletAt(int gx, int gy) {
+        if (gx >= 0 && gx < cols && gy >= 0 && gy < rows &&
+            layout[gy][gx] == 'O')
+            layout[gy][gx] = ' ';
+    }
+};
+
+// -------------------- Pacman --------------------
+class Pacman {
+    bool animation_over;
+    bool dead;
+    unsigned char direction;
+    unsigned short animation_timer;
+    unsigned short energizer_timer;
+
+public:
+    float x, y;
+    int tileSize;
+    float speed;
+    float radius;
+
+    Pacman(int startX, int startY, int tSize)
+        : x((float)startX), y((float)startY), tileSize(tSize),
+        speed(2.5f), animation_over(false), dead(false),
+        direction(1), animation_timer(0), energizer_timer(0)
+    {
+        radius = tileSize * 0.3f;
+    }
+
+    static bool circleIntersectsRect(float cx, float cy, float r,
+        float rx, float ry, float rw, float rh) {
+        float nearestX = max(rx, min(cx, rx + rw));
+        float nearestY = max(ry, min(cy, ry + rh));
+        float dx = cx - nearestX;
+        float dy = cy - nearestY;
+        return (dx * dx + dy * dy) < (r * r);
+    }
+
+    bool collidesAtCenter(Map& map, float centerX, float centerY) {
+        int gx = (int)(centerX / tileSize);
+        int gy = (int)(centerY / tileSize);
+        for (int oy = -1; oy <= 1; oy++)
+            for (int ox = -1; ox <= 1; ox++) {
+                int nx = gx + ox;
+                int ny = gy + oy;
+                if (map.isWall(nx, ny)) {
+                    float rx = nx * tileSize;
+                    float ry = ny * tileSize;
+                    if (circleIntersectsRect(centerX, centerY, radius,
+                        rx, ry, (float)tileSize, (float)tileSize))
+                        return true;
+                }
+            }
+        return false;
+    }
+
+    void update(Map& map) {
+        int gridX = (int)((x + tileSize / 2) / tileSize);
+        int gridY = (int)((y + tileSize / 2) / tileSize);
+        float centerX = gridX * tileSize + tileSize / 2.0f;
+        float centerY = gridY * tileSize + tileSize / 2.0f;
+
+        if (fabs(x - centerX) < 1.5f) x = centerX;
+        if (fabs(y - centerY) < 1.5f) y = centerY;
+
+        float dx = 0, dy = 0;
+        if (IsKeyDown(KEY_RIGHT)) { dx += speed; direction = 1; }
+        if (IsKeyDown(KEY_LEFT)) { dx -= speed; direction = 0; }
+        if (IsKeyDown(KEY_UP)) { dy -= speed; direction = 3; }
+        if (IsKeyDown(KEY_DOWN)) { dy += speed; direction = 2; }
+
+        if (dx != 0 && dy != 0) {
+            float inv = 1.0f / sqrtf(dx * dx + dy * dy);
+            dx *= inv * speed;
+            dy *= inv * speed;
+        }
+
+        float tryX = x + dx;
+        float tryY = y + dy;
+
+        if (!collidesAtCenter(map, tryX + tileSize / 2.0f, y + tileSize / 2.0f)) x = tryX;
+        if (!collidesAtCenter(map, x + tileSize / 2.0f, tryY + tileSize / 2.0f)) y = tryY;
+
+        int eatGX = (int)((x + tileSize * 0.5f) / tileSize);
+        int eatGY = (int)((y + tileSize * 0.5f) / tileSize);
+        map.coins.eatCoinAt(eatGX, eatGY);
+        map.eatLargePelletAt(eatGX, eatGY);
+
+        if (energizer_timer > 0) energizer_timer--;
+        animation_timer++;
+    }
+
+    void draw(bool victory = false) {
+        float cx = x + tileSize / 2;
+        float cy = y + tileSize / 2;
+
+        Color pacColor = victory ? GOLD : YELLOW;
+        DrawCircle((int)cx, (int)cy, radius, pacColor);
+
+        float mouthAngle = 40 * sin(animation_timer * 0.15f);
+        switch (direction) {
+        case 0: DrawCircleSector({ cx, cy }, radius, 180 + mouthAngle, 180 - mouthAngle, 0, BLACK); break;
+        case 1: DrawCircleSector({ cx, cy }, radius, mouthAngle, -mouthAngle, 0, BLACK); break;
+        case 2: DrawCircleSector({ cx, cy }, radius, 90 + mouthAngle, 90 - mouthAngle, 0, BLACK); break;
+        case 3: DrawCircleSector({ cx, cy }, radius, 270 + mouthAngle, 270 - mouthAngle, 0, BLACK); break;
+        }
+    }
+};
+
+// -------------------- Ghost --------------------
+class Ghost {
+public:
+    Vector2 position;
+    int id;
+    int direction;
+    int frightened_mode;
+    int animation_timer;
+    Texture2D texture;
+
+    Ghost(int gx, int gy, int i_id, Texture2D tex, int tileSize)
+        : id(i_id), direction(0), frightened_mode(0),
+        animation_timer(0), texture(tex)
+    {
+        position = { (float)gx * tileSize, (float)gy * tileSize };
+    }
+
+    void draw(bool i_flash, int tileSize) {
+        int frame = (animation_timer / GHOST_ANIMATION_SPEED) % GHOST_ANIMATION_FRAMES;
+        Rectangle srcRectBody = { frame * 16.0f, 0, 16, 16 };
+        Rectangle dstRect = { position.x, position.y, (float)tileSize, (float)tileSize };
+
+        Color bodyColor = WHITE;
+        switch (id) {
+        case 0: bodyColor = RED; break;
+        case 1: bodyColor = PINK; break;
+        case 2: bodyColor = SKYBLUE; break;
+        case 3: bodyColor = ORANGE; break;
+        }
+
+        DrawTexturePro(texture, srcRectBody, dstRect, { 0, 0 }, 0.0f, bodyColor);
+        animation_timer = (animation_timer + 1) % (GHOST_ANIMATION_FRAMES * GHOST_ANIMATION_SPEED);
+    }
+
+};
+
+// -------------------- Main --------------------
+int main() {
+    vector<string> mazeLayout = {
+ " ################### ",
+ " #........#.....O..# ",
+ " # ##.###.#.###.## # ",
+ " #..O..............# ",
+ " #.##.#.#####.#.##.# ",
+ " #....#...#...#....# ",
+ " ####.### # ###.#### ",
+ "    #.#       #.#    ",
+ "#####.# ##### #.#####",
+ "     .  #   #  .     ",
+ "#####.# ##### #.#####",
+ "    #.#...O...#.#    ",
+ " ####.# ##### #.#### ",
+ " #........#........# ",
+ " #.##.###.#.###.##.# ",
+ " # .#.O.........#. # ",
+ " ##.#.#.#####.P.#.## ",
+ " #....#...#...#....# ",
+ " #.######.#.######.# ",
+ " #...............O.# ",
+ " ################### "
+    };
+
+    int tileSize = 45;
+    Map maze(mazeLayout, tileSize);
+
+    int startGX = -1, startGY = -1;
+    for (int y = 0; y < maze.rows; y++)
+        for (int x = 0; x < maze.cols; x++)
+            if (maze.layout[y][x] == 'P') {
+                startGX = x; startGY = y; break;
+            }
+
+    if (startGX == -1) { startGX = maze.cols / 2; startGY = maze.rows - 2; }
+
+    Pacman pac(startGX * tileSize, startGY * tileSize, tileSize);
+
+    int winW = maze.cols * tileSize;
+    int winH = maze.rows * tileSize;
+    InitWindow(winW, winH, "PacMaze - Raylib Grid Integrated");
+    SetTargetFPS(60);
+
+    Texture2D ghostTexture = LoadTexture("Ghost16.png");
+    if (ghostTexture.id == 0)
+        cout << "⚠️ Ghost texture not found! Check path.\n";
+
+    vector<Ghost> ghosts;
+    ghosts.push_back(Ghost(9, 9, 0, ghostTexture, tileSize));
+    ghosts.push_back(Ghost(10, 9, 1, ghostTexture, tileSize));
+    ghosts.push_back(Ghost(11, 9, 2, ghostTexture, tileSize));
+    
+    while (!WindowShouldClose()) {
+        pac.update(maze);
+
+        BeginDrawing();
+        ClearBackground(BLACK);
+        maze.Draw();
+        pac.draw();
+
+        for (auto& g : ghosts) {
+            g.draw(false, tileSize);
+        }
+
+        DrawText("PACMAZE DEMO", 8, 6, 16, WHITE);
+        EndDrawing();
+    }
+
+    UnloadTexture(ghostTexture);
+    CloseWindow();
+    return 0;
+}
