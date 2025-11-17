@@ -186,7 +186,7 @@ public:
                 if (layout[y][x] == 'O') {
                     int cx = x * tileSize + tileSize / 2;
                     int cy = y * tileSize + tileSize / 2;
-                    DrawCircle(cx, cy, tileSize * 0.2f, ORANGE);
+                    DrawCircle(cx, cy, tileSize * 0.3f, ORANGE);
                 }
 
         int gateX = 10 * tileSize;
@@ -237,7 +237,7 @@ public:
         speed(4.0f), animation_over(false), alive(true),
         direction(RIGHT), desiredDirection(RIGHT), animation_timer(0), energizer_timer(0), lives(3), dying(false), death_timer(0)
     {
-        radius = tileSize * 0.4f;
+        radius = tileSize * 0.3f;
         startXPos = (float)x;
         startYPos = (float)y;
     }
@@ -368,10 +368,6 @@ public:
         case UP:    DrawCircleSector({ cx, cy }, radius, 270 + mouthAngle, 270 - mouthAngle, 0, BLACK); break;
         }
 
-        // draw lives at top-left
-        for (int i = 0; i < lives; i++) {
-            DrawCircle(10 + i * (radius * 2 + 5), 10 + radius, radius, YELLOW);
-        }
     }
 
 
@@ -982,22 +978,39 @@ void checkPacmanGhostCollision(
     int& framesSinceStart
 )
 {
-    // Local static to reset releaseGhost timing after a death (kept here for isolation)
+    // Local static to reset releaseGhost timing after a death
     static int redLeftFrame_global = -1;
 
     std::vector<Ghost*> ghosts = { &red, &pink, &orange, &blue };
 
+    // ----------- REAL CIRCLE COLLISION (CORRECT FIX) ----------
     for (Ghost* g : ghosts)
     {
-        float dx = fabs(pac.x - g->position.x);
-        float dy = fabs(pac.y - g->position.y);
+        float pacCenterX = pac.x + tileSize / 2.0f;
+        float pacCenterY = pac.y + tileSize / 2.0f;
 
-        if (dx < 20 && dy < 20)  // collision detected
+        float ghostCenterX = g->position.x + tileSize / 2.0f;
+        float ghostCenterY = g->position.y + tileSize / 2.0f;
+
+        float dx = pacCenterX - ghostCenterX;
+        float dy = pacCenterY - ghostCenterY;
+
+        float distSq = dx * dx + dy * dy;
+
+        float pacRadius = pac.radius;
+        float ghostRadius = tileSize * 0.40f;   // same as Pac-Man mouth radius approx
+        float collisionDist = pacRadius + ghostRadius;
+        float collisionDistSq = collisionDist * collisionDist;
+
+        if (distSq < collisionDistSq)   // ⭐ Proper collision detected
         {
+            // ---------------------------------------
             // 1) HANDLE PACMAN LIVES
+            // ---------------------------------------
             pac.dying = true;
             pac.death_timer = 0;
             pac.lives--;
+
             if (pac.lives <= 0)
             {
                 cout << "GAME OVER!" << endl;
@@ -1005,16 +1018,17 @@ void checkPacmanGhostCollision(
                 exit(0);
             }
 
-            // 2) RESET PACMAN POSITION (pellets remain eaten)
+            // ---------------------------------------
+            // 2) RESET PACMAN POSITION
+            // ---------------------------------------
             pac.x = pac.startXPos;
             pac.y = pac.startYPos;
             pac.direction = Pacman::RIGHT;
-            // If you have desiredDirection member, keep it consistent:
-            // pac.desiredDirection = Pacman::RIGHT;
             pac.alive = true;
 
-            // 3) RESET ALL GHOSTS BACK TO THE CAGE (use the same coordinates used in main)
-            // IMPORTANT: these grid coordinates must match the ones you used when creating the ghosts in main().
+            // ---------------------------------------
+            // 3) RESET ALL GHOSTS BACK TO CAGE
+            // ---------------------------------------
             const int RED_CAGE_COL = 10, RED_CAGE_ROW = 8;
             const int PINK_CAGE_COL = 9, PINK_CAGE_ROW = 9;
             const int ORANGE_CAGE_COL = 10, ORANGE_CAGE_ROW = 9;
@@ -1025,14 +1039,15 @@ void checkPacmanGhostCollision(
             orange.position = { (float)(ORANGE_CAGE_COL * tileSize),(float)(ORANGE_CAGE_ROW * tileSize) };
             blue.position = { (float)(BLUE_CAGE_COL * tileSize),  (float)(BLUE_CAGE_ROW * tileSize) };
 
-            // clear frightened state
+            // Clear frightened state
             red.frightened_mode = 0;
             pink.frightened_mode = 0;
             orange.frightened_mode = 0;
             blue.frightened_mode = 0;
 
-            // 4) RESET RELEASE STATES (so releaseGhost treats them like game start)
-            // Red is considered active (starts outside) if that's how you do it in main.
+            // ---------------------------------------
+            // 4) RESET RELEASE STATES
+            // ---------------------------------------
             redInfo.state = R_ACTIVE;
             redInfo.timer = 0;
             redInfo.justEnteredScatter = false;
@@ -1049,22 +1064,44 @@ void checkPacmanGhostCollision(
             blueInfo.timer = 0;
             blueInfo.justEnteredScatter = false;
 
-            // 5) RESET THE FRAME COUNTER USED BY releaseGhost so timings restart
+            // ---------------------------------------
+            // 5) RESET RELEASE TIMERS
+            // ---------------------------------------
             framesSinceStart = 0;
             redLeftFrame_global = -1;
 
-            // 6) CALL releaseGhost so they will exit exactly like at start (pink/orange/blue)
-            // Note: releaseGhost expects (Ghost& g, Ghost& red, Map& map, int tileSize, int framesSinceStart, ReleaseInfo& info)
+            // ---------------------------------------
+            // 6) CALL releaseGhost TO START RELEASE CYCLE AGAIN
+            // ---------------------------------------
             releaseGhost(pink, red, map, tileSize, framesSinceStart, pinkInfo);
             releaseGhost(orange, red, map, tileSize, framesSinceStart, orangeInfo);
             releaseGhost(blue, red, map, tileSize, framesSinceStart, blueInfo);
 
-            // Done — avoid handling multiple collisions in same frame
-            return;
+            return; // very important (avoid multi-collision same frame)
         }
     }
 }
 
+
+void DrawLives(int lives, int tileSize, int screenWidth) {
+    // Position lives at top-right
+    float startX = screenWidth - (lives * 35) - 20; // 20px margin from right
+    float y = 25;                                   // top margin
+    float r = tileSize * 0.25f;                     // mini pacman radius
+
+    for (int i = 0; i < lives; i++) {
+        float lx = startX + i * 35;  // spacing between icons
+        float ly = y;
+
+        float open = 40; // Mouth opening angle
+
+        // Body
+        DrawCircle(lx, ly, r, YELLOW);
+
+        // Mouth - facing RIGHT
+        DrawCircleSector({ lx, ly }, r, open, -open, 0, BLACK);
+    }
+}
 
 
 
@@ -1201,10 +1238,8 @@ int main() {
         blue.draw(false, tileSize);
 
         // Draw lives at top-left
-        for (int i = 0; i < pac.lives; i++)
-            DrawCircle(20 + i * 25, 20, pac.radius * 0.5f, YELLOW);
-
-        DrawText("PACMAZE DEMO", 8, 6, 16, WHITE);
+        DrawLives(pac.lives, tileSize, winW);
+       
         EndDrawing();
     }
 
