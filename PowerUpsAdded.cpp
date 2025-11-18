@@ -270,8 +270,12 @@ public:
     float speed;
     float radius;
     int lives;
+
     int score;
     int speedTimer;
+    int scoreCooldown = 0;   // frames until next score boost allowed
+    int speedCooldown = 0;   // optional, for limiting consecutive speed boosts
+
     bool alive;
     bool dying;          
     int death_timer;
@@ -359,6 +363,7 @@ public:
     void speedBoost(int durationFrames) {
         speed += 1.0f;               // temporary boost
         speedTimer = durationFrames;
+        speedCooldown = 60;
     }
 
 
@@ -430,8 +435,12 @@ public:
         // ---- handle speed boost timer ----
         if (speedTimer > 0) {
             speedTimer--;
-            if (speedTimer == 0) speed = 3.6f; // reset to normal speed
+            if (speedTimer == 0) speed = 3.6f; // reset normal speed
         }
+
+        // cooldown countdowns
+        if (scoreCooldown > 0) scoreCooldown--;
+        if (speedCooldown > 0) speedCooldown--;
     }
 
     void draw(bool victory = false) {
@@ -468,22 +477,32 @@ public:
 static void processMysteryPowerUp(Pacman& pac) {
     const int maxLives = 3;
 
-    if (pac.lives < maxLives) pq.push({ 3, "life" }); // life has highest priority
-    else {
-        pq.push({ 2, "score" }); // only push score if lives full
-        // only push speed if score will increase AND lives max
+    // 1️⃣ Life has highest priority
+    if (pac.lives < maxLives) pq.push({ 3, "life" });
+
+    // 2️⃣ Score boost only if lives full and cooldown is 0
+    if (pac.lives == maxLives && pac.scoreCooldown == 0) pq.push({ 2, "score" });
+
+    // 3️⃣ Speed boost if score just applied or allowed
+    if (pac.lives == maxLives && pac.scoreCooldown > 0 && pac.speedCooldown == 0)
         pq.push({ 1, "speed" });
-    }
-    
+
+    // ---- Process power-ups in priority order ----
     while (!pq.empty()) {
         PowerUp chosen = pq.top();
         pq.pop();
 
-        if (chosen.type == "life" && pac.lives < maxLives) pac.lives++;
-        else if (chosen.type == "score") pac.score += 200;
-        else if (chosen.type == "speed") pac.speedBoost(5);
+        if (chosen.type == "life" && pac.lives < maxLives) {
+            pac.lives++;
+        }
+        else if (chosen.type == "score") {
+            pac.score += 200;
+            pac.scoreCooldown = 300; // e.g., 5 seconds before next score boost
+        }
+        else if (chosen.type == "speed") {
+            pac.speedBoost(300); // duration in frames
+        }
     }
-   
 }
 
 
