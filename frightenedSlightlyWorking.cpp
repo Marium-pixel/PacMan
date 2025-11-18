@@ -1434,8 +1434,24 @@ int main() {
             releaseGhost(orange, red, maze, tileSize, globalFrames, orangeRelease);
             releaseGhost(blue, red, maze, tileSize, globalFrames, blueRelease);
 
-            // Pac-Man movement
+            // 1️⃣ Pac-Man moves
             pac.update(maze);
+
+            // 2️⃣ Check for large pellet
+            int gx = (pac.x + tileSize / 2) / tileSize;
+            int gy = (pac.y + tileSize / 2) / tileSize;
+
+            maze.eatLargePelletAt(gx, gy);  // removes pellet if present
+
+            // 3️⃣ If it was a large pellet, activate frightened mode
+            if (pac.energizer_timer == 0 && maze.layout[gy][gx] == ' ') {
+                pac.energizer_timer = 7 * 60; // duration
+                frightenedTimer = 0;
+                red.frightened_mode =
+                    pink.frightened_mode =
+                    orange.frightened_mode =
+                    blue.frightened_mode = 1;
+            }
 
             // -------------------- FRIGHTENED MODE --------------------
             if (pac.energizer_timer > 0)
@@ -1463,7 +1479,7 @@ int main() {
             // Collision detection
             checkPacmanGhostCollision(
                 pac, red, pink, orange, blue,
-                tileSize, redRelease, blueRelease, pinkRelease, orangeRelease,
+                tileSize, redRelease, blueRelease, pinkRelease, orangeRelease,a
                 maze, globalFrames
             );
 
