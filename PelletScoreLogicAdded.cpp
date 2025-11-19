@@ -955,7 +955,7 @@ void chasePacmanToTarget(Ghost& g, Pacman& p, Map& map, int tileSize) {
     // Optionally allow non-red ghosts to call this; caller may decide
     int px = (int)((p.x + tileSize / 2) / tileSize);
     int py = (int)((p.y + tileSize / 2) / tileSize);
-    navigateToTile(g, map, tileSize, px, py, 1.0f);
+    navigateToTile(g, map, tileSize, px, py, 2.0f);
 }
 
 // scatter wrapper: find sensible top-right (or other provided) and navigate with scatter speed
@@ -969,7 +969,7 @@ void scatterToCorner(Ghost& g, Map& map, int tileSize) {
         if (tx != -1) break;
     }
     if (tx == -1) { tx = map.cols - 2; ty = 1; } // fallback
-    navigateToTile(g, map, tileSize, tx, ty, 2.5f);
+    navigateToTile(g, map, tileSize, tx, ty, 2.0f);
 }
 
 // Generic wrapper if you want to directly call with any tile:
@@ -1101,7 +1101,7 @@ public:
 
         if (tx == -1) { tx = 1; ty = 1; } // fallback
 
-        navigateGhostToTile(*this, m, tileSize, tx, ty, 2.5f);
+        navigateGhostToTile(*this, m, tileSize, tx, ty, 2.0f);
     }
 
     void chaseTarget(Pacman& p, Map& m, int tileSize) {
@@ -1116,7 +1116,7 @@ public:
         default: break;
         }
 
-        navigateGhostToTile(*this, m, tileSize, tx, ty, 1.0f);
+        navigateGhostToTile(*this, m, tileSize, tx, ty, 2.0f);
     }
 
     void update(Pacman& p, Map& m, int tileSize, bool scatterMode) {
@@ -1158,7 +1158,7 @@ public:
         }
 
         if (tx == -1) { tx = 1; ty = m.rows - 2; } // fallback
-        navigateGhostToTile(*this, m, tileSize, tx, ty, 1.0f);
+        navigateGhostToTile(*this, m, tileSize, tx, ty, 2.0f);
     }
 
     // Chase 2 tiles in front of Pacman
@@ -1185,7 +1185,7 @@ public:
             scatterToBottomLeft(m, tileSize);
         }
         else {
-            navigateGhostToTile(*this, m, tileSize, tx, ty, 3.0f);
+            navigateGhostToTile(*this, m, tileSize, tx, ty, 2.0f);
         }
     }
 
@@ -1228,7 +1228,7 @@ public:
         }
 
         if (tx == -1) { tx = m.cols - 2; ty = m.rows - 2; } // fallback
-        navigateGhostToTile(*this, m, tileSize, tx, ty, 1.0f);
+        navigateGhostToTile(*this, m, tileSize, tx, ty, 2.0f);
     }
 
     // Chase target using RedGhost and Pacman
@@ -1255,7 +1255,7 @@ public:
         int tx = (int)(targetX / tileSize);
         int ty = (int)(targetY / tileSize);
 
-        navigateGhostToTile(*this, m, tileSize, tx, ty, 3.0f);
+        navigateGhostToTile(*this, m, tileSize, tx, ty, 2.0f);
     }
 
     void update(Pacman& p, RedGhost& red, Map& m, int tileSize, bool scatterMode) {
