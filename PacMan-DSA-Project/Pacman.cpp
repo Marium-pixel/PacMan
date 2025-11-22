@@ -13,7 +13,7 @@ Pacman::Pacman(int startX, int startY, int tSize)
     energizer_timer(0), lives(3), dying(false), death_timer(0),
     score(300), speedTimer(0), scoreCooldown(0), speedCooldown(0)
 {
-    radius = tileSize * 0.2f;
+    radius = tileSize * 0.39f;
     startXPos = (float)x;
     startYPos = (float)y;
 }
@@ -183,3 +183,4 @@ void processMysteryPowerUp(Pacman& pac) {
         else if (chosen.type == "speed") pac.speedBoost(420);
     }
 }
+
