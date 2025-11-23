@@ -14,10 +14,10 @@
 
 using namespace std;
 
-extern string playerName ;
-extern int loadingFrame ;
+extern string playerName;
+extern int loadingFrame;
 
-class GameStateManager{
+class GameStateManager {
 public:
     GameConstants::GameState currentState;
     GameConstants::MenuOption selectedOption;
@@ -30,6 +30,7 @@ public:
 void DrawLives(int lives, int tileSize, int screenWidth);
 void DrawMenuPacman(float x, float y, float radius, int animFrame, Color pacColor = YELLOW);
 void DrawBlinkingTextFrames(const char* text, Vector2 pos, int fontSize, int spacing, Color color, Font titleFont);
+void DrawLevelSelectScreen(int winW, int winH, Font font, int selected);
 
 void DrawStartScreen(int winW, int winH, Font titleFont, int selectedOption);
 void DrawHowToScreen(int winW, int winH, Font instructionFont);
@@ -47,4 +48,4 @@ void resetGame(Map& maze, Pacman& pac, RedGhost& red, PinkGhost& pink, OrangeGho
 // Global flag to signal game reset
 extern bool gameResetFlag;
 
-#endif // MENU_H
+#endif // MENU_H#pragma once
