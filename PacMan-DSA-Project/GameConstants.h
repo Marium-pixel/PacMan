@@ -25,10 +25,14 @@ namespace GameConstants {
 
     // Enums
     typedef enum { MENU_PLAY, MENU_HOW_TO, MENU_HIGHSCORE, MENU_EXIT } MenuOption;
-    typedef enum { STATE_MENU, STATE_LOADING, STATE_ENTER_NAME, STATE_PLAYING, STATE_HIGHSCORE, STATE_HOW_TO, STATE_EXIT } GameState;
+    typedef enum { STATE_MENU, STATE_LOADING, STATE_ENTER_NAME, STATE_PLAYING, STATE_LEVEL_SELECT, STATE_HIGHSCORE, STATE_HOW_TO, STATE_EXIT } GameState;
 
     enum GhostState { NORMAL, FRIGHTENED, EYES };
     enum ReleaseState { R_IN_CAGE = 0, R_EXITING_GATE = 1, R_ACTIVE = 2 };
+    enum Difficulty {
+        DIFF_EASY,
+        DIFF_HARD
+    };
 } // namespace GameConstants
 
 // Structs (if needed globally)
@@ -40,4 +44,5 @@ struct ReleaseInfo {
 };
 
 
-#endif // GAME_CONSTANTS_H
+#endif // GAME_CONSTANTS_H#pragma once
+
