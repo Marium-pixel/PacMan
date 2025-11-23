@@ -41,6 +41,8 @@ void DrawBlinkingTextFrames(const char* text, Vector2 pos, int fontSize, int spa
     }
 }
 
+ 
+
 // -------------------- Start Screen --------------------
 void DrawStartScreen(int winW, int winH, Font titleFont, int selectedOption) {
     ClearBackground(BLACK);
