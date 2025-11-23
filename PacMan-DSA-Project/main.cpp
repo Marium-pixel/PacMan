@@ -18,7 +18,7 @@
 #include <sstream>
 
 using namespace std;
-using namespace GameConstants; 
+using namespace GameConstants;
 
 int main() {
     vector<string> mazeLayout = {
@@ -218,9 +218,7 @@ int main() {
             if (IsKeyPressed(KEY_ENTER)) {
                 switch (selectedOption) {
                 case MENU_PLAY:
-                    currentState = STATE_PLAYING;
-                    globalFrames = 0;
-                    waveTimer = 0;
+                    currentState = STATE_LEVEL_SELECT;
                     break;
                 case MENU_HOW_TO:
                     currentState = STATE_HOW_TO;  // Implement this state/screen
@@ -261,6 +259,45 @@ int main() {
             if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ESCAPE)) {
                 currentState = STATE_MENU;
                 selectedOption = MENU_PLAY;
+            }
+
+            EndDrawing();
+            continue;
+        }
+
+
+        // ------------------- LEVEL SELECT -------------------
+        static int selectedDifficulty = 0; // 0 = easy, 1 = hard
+        static Difficulty gameDifficulty = DIFF_EASY;
+
+        if (currentState == STATE_LEVEL_SELECT)
+        {
+            DrawLevelSelectScreen(winW, winH, titleFont, selectedDifficulty);
+
+            if (IsKeyPressed(KEY_UP))
+                selectedDifficulty = (selectedDifficulty - 1 + 2) % 2;
+
+            if (IsKeyPressed(KEY_DOWN))
+                selectedDifficulty = (selectedDifficulty + 1) % 2;
+
+            if (IsKeyPressed(KEY_ENTER))
+            {
+                gameDifficulty = (selectedDifficulty == 0 ? DIFF_EASY : DIFF_HARD);
+
+                // Apply difficulty BEFORE starting game
+                pac.lives = (gameDifficulty == DIFF_EASY ? 3 : 1);
+
+                // Increase ghost speed in hard mode
+                float ghostMult = (gameDifficulty == DIFF_HARD ? 2.5f : 1.0f);
+
+                red.speedMultiplier = ghostMult;
+                pink.speedMultiplier = ghostMult;
+                blue.speedMultiplier = ghostMult;
+                orange.speedMultiplier = ghostMult;
+
+                currentState = STATE_PLAYING;
+                globalFrames = 0;
+                waveTimer = 0;
             }
 
             EndDrawing();
@@ -418,7 +455,7 @@ int main() {
         maze.Draw();
         pac.draw();
 
-        // ? ADDED — proper flashing
+        // ? ADDED ï¿½ proper flashing
         bool flashing = (frightenedTimer >= FRIGHTENED_FLASH_START) && (frightenedTimer % 30 < 15);
 
         red.draw(flashing, tileSize);
