@@ -29,6 +29,7 @@ public:
 
     ReleaseState releaseState = R_IN_CAGE;
     float speed = 1.5f;
+    float speedMultiplier = 6.0f;
 
     int cageX, cageY;             // cage center
     int gateX, gateY;             // door tile
@@ -104,3 +105,4 @@ void checkPacmanGhostCollision(Pacman& pac,
 
 
 #endif // GHOST_H
+
