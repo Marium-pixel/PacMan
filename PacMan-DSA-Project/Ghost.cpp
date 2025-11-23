@@ -21,10 +21,10 @@ void Ghost::moveToGate(Map& map, int tileSize) {
     int gx = (int)(position.x / tileSize);
     int gy = (int)(position.y / tileSize);
 
-    if (gx < eyesTargetX && !map.isWall(gx + 1, gy)) position.x += speed;
-    else if (gx > eyesTargetX && !map.isWall(gx - 1, gy)) position.x -= speed;
-    else if (gy < eyesTargetY && !map.isWall(gx, gy + 1)) position.y += speed;
-    else if (gy > eyesTargetY && !map.isWall(gx, gy - 1)) position.y -= speed;
+    if (gx < eyesTargetX && !map.isWall(gx + 1, gy)) position.x += speed * speedMultiplier;
+    else if (gx > eyesTargetX && !map.isWall(gx - 1, gy)) position.x -= speed * speedMultiplier;
+    else if (gy < eyesTargetY && !map.isWall(gx, gy + 1)) position.y += speed * speedMultiplier;
+    else if (gy > eyesTargetY && !map.isWall(gx, gy - 1)) position.y -= speed * speedMultiplier;
 
     gx = (int)(position.x / tileSize);
     gy = (int)(position.y / tileSize);
@@ -181,7 +181,7 @@ void OrangeGhost::scatterToBottomLeft(Map& m, int tileSize) {
 }
 
 // Chase 2 tiles in front of Pacman
-void OrangeGhost ::chaseTarget(Pacman& p, Map& m, int tileSize) {
+void OrangeGhost::chaseTarget(Pacman& p, Map& m, int tileSize) {
     int tx = (int)((p.x + tileSize / 2) / tileSize);
     int ty = (int)((p.y + tileSize / 2) / tileSize);
 
@@ -218,7 +218,7 @@ void OrangeGhost::update(Pacman& p, Map& m, int tileSize, bool scatterMode) {
         chaseTarget(p, m, tileSize);
 }
 
-void OrangeGhost:: draw(bool debug, int tileSize) {
+void OrangeGhost::draw(bool debug, int tileSize) {
     Ghost::draw(debug, tileSize);
 }
 
@@ -229,7 +229,7 @@ BlueGhost::BlueGhost(int gx, int gy, int id, Texture2D tex, int tile)
 }
 
 // Scatter to bottom-right corner
-void BlueGhost:: scatterToBottomRight(Map& m, int tileSize) {
+void BlueGhost::scatterToBottomRight(Map& m, int tileSize) {
     int tx = -1, ty = -1;
 
     for (int row = m.rows - 1; row >= 0; --row) {
@@ -875,7 +875,6 @@ void checkPacmanGhostCollision(
         }
     }
 }
-
 
 
 
