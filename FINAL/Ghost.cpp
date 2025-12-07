@@ -749,9 +749,7 @@ void frightened(
         {
             // Send ghost to cage
             g->frightened_mode = 2; // eyes
-            g->position.x = (float)g->cageX * tileSize;
-            g->position.y = (float)g->cageY * tileSize;
-
+            backtrackToGate(*g, map, tileSize);
             // score logic
             pac.score += 200;
 
@@ -883,6 +881,7 @@ void checkPacmanGhostCollision(
         }
     }
 }
+
 
 
 
